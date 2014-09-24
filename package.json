@@ -1,0 +1,11 @@
+{
+  "name": "fis-prepackager-concat",
+  "version": "0.0.0",
+  "description": "A fis plugin to concatenate all kinds of files.",
+  "main": "index.js",
+  "keywords": [
+    "fis",
+    "concat"
+  ],
+  "author": "Teng Long"
+}

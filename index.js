@@ -7,74 +7,75 @@
 
 'use strict';
 
-var concats = {},
-    regExpRules = [],
-    templateFiles = [],
-    contents = {};
-
-var defaultSettings = {
-    inline: false
-};
-
-var namespace = fis.config.get('namespace');
-
-var extend_object = function(obj) {
-    var src, prop;
-    for (var i = 1, length = arguments.length; i < length; i++) {
-        src = arguments[i];
-        for (prop in src) {
-            if (Object.prototype.hasOwnProperty.call(src, prop)) {
-                obj[prop] = src[prop];
-            }
-        }
-    }
-    return obj;
-};
-
-// value is an object
-// and value.from is sure to be existed
-
-var formatConfig = function(id, value, type) {
-
-    var separator;
-
-    if (type === 'json') {
-        separator = ',';
-    } else if (type === 'css') {
-        separator = '';
-    }
-
-    var obj = {separator: separator, type: type};
-
-    if (fis.util.is(value.from, 'Array')) {
-        concats[id] = extend_object(obj, defaultSettings, value);
-
-    } else if (fis.util.is(value.from, 'String')) {
-
-        concats[id] = extend_object(obj, defaultSettings, value, {from: [value.from]});
-
-    } else if (fis.util.is(value.from, 'RegExp')) {
-
-        concats[id] = extend_object(obj, defaultSettings, value, {from: []});
-
-        regExpRules.push({
-            id: id,
-            regexp: value.from,
-        });
-
-    }
-};
-
-var _processFile = function(type, content) {
-    return content;
-};
-
 module.exports = function(ret, conf, settings, opt) {
 
     // if no files to concat
     if (!settings.files) {
         return;
     }
+
+    var concats = {},
+        regExpRules = [],
+        templateFiles = [],
+        contents = {};
+
+    var defaultSettings = {
+        inline: false
+    };
+
+    var namespace = fis.config.get('namespace');
+
+    var extend_object = function(obj) {
+        var src, prop;
+        for (var i = 1, length = arguments.length; i < length; i++) {
+            src = arguments[i];
+            for (prop in src) {
+                if (Object.prototype.hasOwnProperty.call(src, prop)) {
+                    obj[prop] = src[prop];
+                }
+            }
+        }
+        return obj;
+    };
+
+    // value is an object
+    // and value.from is sure to be existed
+
+    var formatConfig = function(id, value, type) {
+
+        var separator;
+
+        if (type === 'json') {
+            separator = ',';
+        } else if (type === 'css') {
+            separator = '';
+        }
+
+        var obj = {separator: separator, type: type};
+
+        if (fis.util.is(value.from, 'Array')) {
+            concats[id] = extend_object(obj, defaultSettings, value);
+
+        } else if (fis.util.is(value.from, 'String')) {
+
+            concats[id] = extend_object(obj, defaultSettings, value, {from: [value.from]});
+
+        } else if (fis.util.is(value.from, 'RegExp')) {
+
+            concats[id] = extend_object(obj, defaultSettings, value, {from: []});
+
+            regExpRules.push({
+                id: id,
+                regexp: value.from,
+            });
+
+        }
+    };
+
+    var _processFile = function(type, content) {
+        return content;
+    };
+
 
     if (opt.optimize) {
         _processFile = function(type, content) {
@@ -99,8 +100,10 @@ module.exports = function(ret, conf, settings, opt) {
         });
     });
 
+    var i = 0;
     // find regExp matched files
     fis.util.map(ret.src, function(relativePath, srcFileObj) {
+        i++;
         regExpRules.forEach(function(value) {
             if (value.regexp.test(relativePath)) {
                 // use subpath

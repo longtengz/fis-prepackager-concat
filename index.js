@@ -8,7 +8,6 @@ exports = module.exports = function(ret, conf, settings, opt) {
     }
 
     var concats = {},
-        regExpRules = [],
         concatContents = {},
         contents = {};
 
@@ -25,42 +24,6 @@ exports = module.exports = function(ret, conf, settings, opt) {
             }
         }
         return obj;
-    };
-
-    // value is an object
-    // and value.include is sure to be existed
-
-    var formatConfig = function(id, value, type) {
-
-        var separator;
-
-        if (type === 'json') {
-            separator = ',';
-        } else if (type === 'css') {
-            separator = '';
-        } else if (type === 'js') {
-            separator = ';';
-        }
-
-        var obj = {separator: separator, type: type};
-
-        if (fis.util.is(value.include, 'Array')) {
-            concats[id] = extend_object(obj, value);
-
-        } else if (fis.util.is(value.include, 'String')) {
-
-            concats[id] = extend_object(obj, value, {include: [value.include]});
-
-        } else if (fis.util.is(value.include, 'RegExp')) {
-
-            concats[id] = extend_object(obj, value, {include: []});
-
-            regExpRules.push({
-                id: id,
-                regexp: value.include,
-            });
-
-        }
     };
 
     var _processFile = function(content, type) {
@@ -102,34 +65,32 @@ exports = module.exports = function(ret, conf, settings, opt) {
         };
     }
 
-    // format pairs
-    fis.util.map(settings.files, function(fileType, value) {
-        fis.util.map(settings.files[fileType], function(id, value) {
-            if (fis.util.is(value, 'Object')) {
-                if (value.include === void 0) {
-                    return;
+    var separators = {
+        json: ',',
+        js: ';',
+        css: ''
+    };
+
+    // find src files that match those rules with include and exclude
+    fis.util.map(ret.src, function(subpath, srcFileObj) {
+        fis.util.map(settings.files, function(fileType, rules) {
+            fis.util.map(rules, function(name, obj) {
+                if (!concats[fileType + ':' + name]) {
+                    concats[fileType + ':' + name] = {
+                        include: [],
+                        type: fileType
+                    };
                 }
-                formatConfig(id, value, fileType);
-            } else {
-                formatConfig(id, {include: value}, fileType);
-            }
+                if (fis.util.filter(subpath, obj.include, obj.exclude)) {
+                    concats[fileType + ':' + name].include.push(subpath.replace(/^\//, ''));
+                }
+            });
         });
     });
-
-    // find regExp matched files
-    fis.util.map(ret.src, function(relativePath, srcFileObj) {
-        regExpRules.forEach(function(value) {
-            if (value.regexp.test(relativePath)) {
-                // use subpath
-                concats[value.id].include.push(srcFileObj.subpath.replace(/^\//, ''));
-            }
-        });
-    });
-
 
     // concat files according to keys in concats
-    fis.util.map(concats, function(id, value) {
-        concatContents[id] = {
+    fis.util.map(concats, function(name, value) {
+        concatContents[name] = {
             placeholder: null,
             content: ''
         };
@@ -154,23 +115,26 @@ exports = module.exports = function(ret, conf, settings, opt) {
         // only files that are not css, js gets optimized like them
         // cuz the content in css, js src files were already optimized during compile phase
         if (value.type === 'js' || value.type === 'css') {
-            concatContents[id].content = contents.join(value.separator);
+            concatContents[name].content = contents.join(separators[value.type]);
         } else {
-            concatContents[id].content = _processFile(contents.join(value.separator), value.type);
+            concatContents[name].content = _processFile(contents.join(separators[value.type]), value.type);
         }
 
         /*
-         * if id === 'example', concat type === type
+         * if name === 'example', concat type === type
          *
          * JsLike placeholder === __concat.type('example') or __concat.type("example")
          * CssLike placeholder === @import url(concat.example);
          * HtmlLike placeholder === <!-- concat.type = example -->
          *
          */
-        concatContents[id].placeholder = {
-            js: new RegExp('__concat\\.' + value.type + '\\((?:"'+ id + '"|\'' + id + '\')\\)'),
-            css: new RegExp('@import\\s+url\\((?:concat\\.'+ id + ')\\);'),
-            html: '<!-- concat.' + value.type + ' = ' + id + ' -->'
+
+        var nameId = name.split(':')[1];
+
+        concatContents[name].placeholder = {
+            js: new RegExp('__concat\\.' + value.type + '\\((?:"'+ nameId + '"|\'' + nameId + '\')\\)'),
+            css: new RegExp('@import\\s+url\\((?:concat\\.'+ nameId + ')\\);'),
+            html: '<!-- concat.' + value.type + ' = ' + nameId + ' -->'
         };
     });
 
@@ -178,7 +142,7 @@ exports = module.exports = function(ret, conf, settings, opt) {
         if (srcFileObj.isText()) {
             var content = srcFileObj.getContent();
 
-            fis.util.map(concatContents, function(id, concat) {
+            fis.util.map(concatContents, function(name, concat) {
                 var placeholder;
 
                 if (srcFileObj.isHtmlLike) {

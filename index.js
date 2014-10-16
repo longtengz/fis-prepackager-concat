@@ -133,7 +133,7 @@ exports = module.exports = function(ret, conf, settings, opt) {
 
         concatContents[name].placeholder = {
             js: new RegExp('__concat\\.' + value.type + '\\((?:"'+ nameId + '"|\'' + nameId + '\')\\)'),
-            css: new RegExp('@import\\s+url\\((?:concat\\.'+ nameId + ')\\);'),
+            css: new RegExp('@import\\s+url\\((?:concat\\.' + value.type + '\\.' + nameId + ')\\);'),
             html: '<!-- concat.' + value.type + ' = ' + nameId + ' -->'
         };
     });
